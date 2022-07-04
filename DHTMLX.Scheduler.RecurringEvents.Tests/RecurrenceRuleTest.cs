@@ -26,6 +26,19 @@ namespace DHTMLX.Scheduler.RecurringEvents.Tests
         }
 
         [TestMethod]
+        public void ParseMonthlyNthDaySeriesFormat()
+        {
+            var parsedRule = RecurrenceRule.Parse("month_1_0_1_#no");
+            Assert.AreEqual(RecurrenceType.Monthly, parsedRule.Type);
+            Assert.AreEqual(1, parsedRule.Interval);
+            Assert.AreEqual((int)DayOfWeek.Sunday, parsedRule.WeekDayOfMonth);
+            Assert.AreEqual(1, parsedRule.WeekDayOfMonthInterval);
+            Assert.AreEqual(0, parsedRule.DaysOfWeek.Count);
+            Assert.AreEqual(-1, parsedRule.NumberOfInstances);
+            Assert.AreEqual("month_1_0_1_#no", parsedRule.ToString());
+        }
+
+        [TestMethod]
         public void ParseWeeklySeriesFormat()
         {
             var parsedRule = RecurrenceRule.Parse("week_1___1,2,3,4,5#no");

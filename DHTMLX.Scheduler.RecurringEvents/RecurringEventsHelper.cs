@@ -14,6 +14,7 @@ namespace DHTMLX.Scheduler.RecurringEvents
         }
 
         public bool OccurrenceTimestampInUtc = false;
+        public OverflowInstancesRule OverflowInstances = OverflowInstancesRule.Skip;
 
         /// <summary>
         /// Parses raw scheduler event records into individual occurrences within specified date range
@@ -127,6 +128,104 @@ namespace DHTMLX.Scheduler.RecurringEvents
             return (evStart < To && evEnd > From && evStart < evEnd);
         }
 
+        protected int _getSeriesStep(RecurrenceType type)
+        {
+            switch (type)
+            {
+                case RecurrenceType.Daily:
+                    return 1;
+                case RecurrenceType.Weekly:
+                    return 7;
+                case RecurrenceType.Monthly:
+                    return 1;
+                case RecurrenceType.Yearly:
+                    return 12;
+            }
+            return 1;
+        }
+
+        protected DateTime _CorrectSeriesStartDate(DateTime eventStart, DateTime rangeStart, SchedulerEvent ev)
+        {
+            var resultDate = eventStart;
+            var rule = ev._parsed_type;
+            switch (rule.Type) {
+                case RecurrenceType.Monthly:
+                case RecurrenceType.Yearly:
+                    var step = _getSeriesStep(rule.Type);
+                    var delta = (int)Math.Ceiling((decimal)((rangeStart.Year * 12 + rangeStart.Month) - (eventStart.Year * 12 + eventStart.Month)) / (step));
+                    if(delta > 0)
+                    {
+                        resultDate = new DateTime(resultDate.Year, resultDate.Month, 1, resultDate.Hour, resultDate.Minute, resultDate.Second);
+                        resultDate = resultDate.AddMonths(delta * rule.Interval);
+                    }
+                    return _GoToFirstMonthYearInstance(resultDate, 0, ev);
+            }
+            return resultDate;
+        }
+
+
+        public enum OverflowInstancesRule
+        {
+            Default,
+            LastDay,
+            Skip
+        }
+        protected DateTime _GoToFirstMonthYearInstance(DateTime startDate, int increment, SchedulerEvent seriesInstance, int currentCount = 0)
+        {
+            var overflowRule = OverflowInstancesRule.LastDay;
+            if(currentCount == 0)
+            {
+                currentCount = 1;
+            }
+            else
+            {
+                currentCount++;
+            }
+
+            var typeInfo = seriesInstance._parsed_type;
+
+            var maxCount = 12;
+
+            if(currentCount > maxCount)
+            {
+                return default(DateTime);
+            }
+
+            var resultDate = new DateTime(
+                startDate.Year, 
+                startDate.Month, 
+                1, 
+                startDate.Hour, 
+                startDate.Minute,
+                startDate.Second
+            );
+            resultDate = resultDate.AddMonths(increment * _getSeriesStep(typeInfo.Type));
+
+
+            var originalDate = resultDate;
+
+            if (typeInfo.WeekDayOfMonthInterval != -1 && typeInfo.WeekDayOfMonth != -1)
+            {
+                resultDate = _GetNthWeekOfMonth(resultDate, typeInfo.WeekDayOfMonthInterval, (DayOfWeek)typeInfo.WeekDayOfMonth);
+
+                if(resultDate.Month != originalDate.Month && overflowRule != OverflowInstancesRule.Default)
+                {
+                    if(overflowRule == OverflowInstancesRule.LastDay)
+                    {
+                        resultDate = originalDate.AddMonths(1);
+                        resultDate = resultDate.AddDays(-1);
+                    }
+                    else
+                    {
+                        resultDate = _GoToFirstMonthYearInstance(originalDate.AddMonths(1), increment, seriesInstance, currentCount);
+                    }
+                }
+            }
+
+            return resultDate;
+
+        }
+
         protected SeriesInfo _GetOccurrences(SchedulerEvent ev, DateTime fromDate, DateTime toDate, int maxOccurrences)
         {
             var tmp = new SchedulerEvent(ev);
@@ -137,14 +236,15 @@ namespace DHTMLX.Scheduler.RecurringEvents
 
                 var occurrences = new List<DateTime>();
 
-                var currDate = tmp.start_date;
+                var seriesStart = tmp.start_date;
+
+                var currDate = _CorrectSeriesStartDate(tmp.start_date, fromDate, ev);
 
                 var end_date = tmp.end_date;
                 if(typeInfo.NumberOfInstances > -1 && typeInfo.NumberOfInstances < maxOccurrences)
                 {
                     maxOccurrences = typeInfo.NumberOfInstances;
                 }
-
                 while (currDate < end_date && currDate < toDate && occurrences.Count < maxOccurrences)
                 {
                     var occEndDate = currDate.AddSeconds((double)tmp.event_length);
@@ -153,12 +253,12 @@ namespace DHTMLX.Scheduler.RecurringEvents
 
                         var tmp_date = _GetNthWeekOfMonth(currDate, typeInfo.WeekDayOfMonthInterval, (DayOfWeek)typeInfo.WeekDayOfMonth);
                         occEndDate = tmp_date.AddSeconds((double)tmp.event_length);
-                        if (_IsInTimeFrame(tmp_date, occEndDate, fromDate, toDate))
+                        if (_IsInTimeFrame(tmp_date, occEndDate, fromDate, toDate) && tmp_date >= seriesStart)
                         {
                             occurrences.Add(tmp_date);
                         }
                     }
-                    else if (typeInfo.DaysOfWeek.Count == 0 && _IsInTimeFrame(currDate, occEndDate, fromDate, toDate))
+                    else if (typeInfo.DaysOfWeek.Count == 0 && _IsInTimeFrame(currDate, occEndDate, fromDate, toDate) && currDate >= seriesStart)
                     {
                         occurrences.Add(currDate);
                     }
@@ -172,7 +272,7 @@ namespace DHTMLX.Scheduler.RecurringEvents
                             var occurrenceStartDate = currDate.AddDays(diff);
 
                             occEndDate = occurrenceStartDate.AddSeconds((double)tmp.event_length);
-                            if (_IsInTimeFrame(occurrenceStartDate, occEndDate, fromDate, toDate) && occurrences.Count < maxOccurrences)
+                            if (_IsInTimeFrame(occurrenceStartDate, occEndDate, fromDate, toDate) && occurrences.Count < maxOccurrences && occurrenceStartDate >= seriesStart)
                                 occurrences.Add(occurrenceStartDate);
                         }
                     }
@@ -185,10 +285,12 @@ namespace DHTMLX.Scheduler.RecurringEvents
                             currDate = currDate.AddDays(7 * typeInfo.Interval);
                             break;
                         case RecurrenceType.Monthly:
-                            currDate = currDate.AddMonths(typeInfo.Interval);
+                            currDate = _GoToFirstMonthYearInstance(currDate, typeInfo.Interval, ev);
+                            //currDate = currDate.AddMonths(typeInfo.Interval);
                             break;
                         case RecurrenceType.Yearly:
-                            currDate = currDate.AddYears(typeInfo.Interval);
+                            currDate = _GoToFirstMonthYearInstance(currDate, typeInfo.Interval, ev);
+                            //currDate = currDate.AddYears(typeInfo.Interval);
                             break;
                         default:
                             break;

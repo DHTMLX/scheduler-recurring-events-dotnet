@@ -15,6 +15,16 @@ namespace DHTMLX.Scheduler.RecurringEvents
         public List<int> DaysOfWeek { get; set; }
         public int NumberOfInstances { get; set; }
 
+        public RecurrenceRule ()
+        {
+            Type = RecurrenceType.RegularEvent;
+            Interval = -1;
+            WeekDayOfMonth = -1;
+            WeekDayOfMonthInterval = -1;
+            NumberOfInstances = -1;
+            DaysOfWeek = new List<int> ();
+        }
+
         public static RecurrenceRule Parse(string rec_type)
         {
             if (string.IsNullOrEmpty(rec_type))
@@ -46,11 +56,11 @@ namespace DHTMLX.Scheduler.RecurringEvents
                 }
                 if (!string.IsNullOrEmpty(typeInfoArray[2]) && int.TryParse(typeInfoArray[2], out intValue))
                 {
-                    typeInfo.WeekDayOfMonthInterval = intValue;
+                    typeInfo.WeekDayOfMonth = intValue;
                 }
                 if (!string.IsNullOrEmpty(typeInfoArray[3]) && int.TryParse(typeInfoArray[3], out intValue))
                 {
-                    typeInfo.WeekDayOfMonth = intValue;
+                    typeInfo.WeekDayOfMonthInterval = intValue;
 
                 }
 
@@ -97,8 +107,8 @@ namespace DHTMLX.Scheduler.RecurringEvents
                 return String.Format("{0}_{1}_{2}_{3}_{4}#{5}", 
                     RecurrenceTypeFormatter.Format(rec_type.Type), 
                     rec_type.Interval <= 0 ? "" : rec_type.Interval.ToString(), 
-                    rec_type.WeekDayOfMonth <= 0 ? "" : rec_type.WeekDayOfMonth.ToString(),
-                    rec_type.WeekDayOfMonthInterval <= 0 ? "" : rec_type.WeekDayOfMonthInterval.ToString(),
+                    rec_type.WeekDayOfMonth < 0 ? "" : rec_type.WeekDayOfMonth.ToString(),
+                    rec_type.WeekDayOfMonthInterval < 0 ? "" : rec_type.WeekDayOfMonthInterval.ToString(),
                     String.Join(",", rec_type.DaysOfWeek),
                     rec_type.NumberOfInstances > 0 ? rec_type.NumberOfInstances.ToString() : "no"
                 );

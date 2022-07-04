@@ -617,5 +617,25 @@ namespace DHTMLX.Scheduler.RecurringEvents.Tests
                 items.Count());
         }
 
+
+        [TestMethod]
+        public void MonthlySeriesEveryNDayOfWeek()
+        {
+            var evs = new List<SchedulerEvent>()
+            {
+                new SchedulerEvent(){
+                    id="1"
+                    ,text = "New event"
+                    ,start_date = new DateTime(2020, 7, 20, 8, 0, 0)
+                    ,end_date = new DateTime(2021, 5, 3, 8, 0, 0, 0)
+                    ,event_length = 12600
+                    ,rec_type = "month_1_1_1_#10"// the first monday of each month 10 times
+                    ,event_pid = null
+                }
+            };
+            var helper = new RecurringEventsHelper();
+            var items = helper.GetOccurrences(evs, new DateTime(2020, 06, 29), new DateTime(2021, 10, 1));
+            Assert.AreEqual(new DateTime(2020, 8, 3, 8, 0, 0), items[0].start_date);
+        }
     }
 }
