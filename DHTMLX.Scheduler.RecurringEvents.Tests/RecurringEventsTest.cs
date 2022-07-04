@@ -637,5 +637,77 @@ namespace DHTMLX.Scheduler.RecurringEvents.Tests
             var items = helper.GetOccurrences(evs, new DateTime(2020, 06, 29), new DateTime(2021, 10, 1));
             Assert.AreEqual(new DateTime(2020, 8, 3, 8, 0, 0), items[0].start_date);
         }
+
+
+        [TestMethod]
+        public void MonthlySeriesMonthEnd()
+        {
+            var evs = new List<SchedulerEvent>()
+            {
+                new SchedulerEvent(){
+                    id="1"
+                    ,text = "New event"
+                    ,start_date = new DateTime(2022, 1, 31, 8, 0, 0)
+                    ,end_date = new DateTime(2023, 1, 31, 8, 0, 0, 0)
+                    ,event_length = 12600
+                    ,rec_type = "month_1___#no"// repeat 31st day every month
+                    ,event_pid = null
+                }
+            };
+            var helper = new RecurringEventsHelper { 
+                OverflowInstances = RecurringEventsHelper.OverflowInstancesRule.Skip
+            };
+
+            var items = helper.GetOccurrences(evs, new DateTime(2022, 1, 31), new DateTime(2024, 1, 1));
+
+            // event repeats on 31st day of every month, month that have less then 31 day won't have instances of the series due to the `OverlowInstances` rule
+            // only these months must have instances of the series: Jan, March, May, July, August, October, December
+            Assert.AreEqual(7, items.Count);
+            Assert.AreEqual(new DateTime(2022, 1, 31, 8, 0, 0), items[0].start_date);
+            Assert.AreEqual(new DateTime(2022, 3, 31, 8, 0, 0), items[1].start_date);
+            Assert.AreEqual(new DateTime(2022, 5, 31, 8, 0, 0), items[2].start_date);
+            Assert.AreEqual(new DateTime(2022, 7, 31, 8, 0, 0), items[3].start_date);
+            Assert.AreEqual(new DateTime(2022, 8, 31, 8, 0, 0), items[4].start_date);
+            Assert.AreEqual(new DateTime(2022, 10, 31, 8, 0, 0), items[5].start_date);
+            Assert.AreEqual(new DateTime(2022, 12, 31, 8, 0, 0), items[6].start_date);
+        }
+
+        [TestMethod]
+        public void MonthlySeriesMonthEndLastDayRule()
+        {
+            var evs = new List<SchedulerEvent>()
+            {
+                new SchedulerEvent(){
+                    id="1"
+                    ,text = "New event"
+                    ,start_date = new DateTime(2022, 1, 31, 8, 0, 0)
+                    ,end_date = new DateTime(2023, 1, 31, 8, 0, 0, 0)
+                    ,event_length = 12600
+                    ,rec_type = "month_1___#no"// repeat 31st day every month
+                    ,event_pid = null
+                }
+            };
+            var helper = new RecurringEventsHelper
+            {
+                OverflowInstances = RecurringEventsHelper.OverflowInstancesRule.LastDay
+            };
+
+            var items = helper.GetOccurrences(evs, new DateTime(2022, 1, 31), new DateTime(2024, 1, 1));
+
+            // event repeats on 31st day of every month, or on the last day of the month due to the `OverlowInstances` rule
+            Assert.AreEqual(12, items.Count);
+            Assert.AreEqual(new DateTime(2022, 1, 31, 8, 0, 0), items[0].start_date);
+            Assert.AreEqual(new DateTime(2022, 2, 28, 8, 0, 0), items[1].start_date);
+            Assert.AreEqual(new DateTime(2022, 3, 31, 8, 0, 0), items[2].start_date);
+            Assert.AreEqual(new DateTime(2022, 4, 30, 8, 0, 0), items[3].start_date);
+            Assert.AreEqual(new DateTime(2022, 5, 31, 8, 0, 0), items[4].start_date);
+            Assert.AreEqual(new DateTime(2022, 6, 30, 8, 0, 0), items[5].start_date);
+            Assert.AreEqual(new DateTime(2022, 7, 31, 8, 0, 0), items[6].start_date);
+            Assert.AreEqual(new DateTime(2022, 8, 31, 8, 0, 0), items[7].start_date);
+            Assert.AreEqual(new DateTime(2022, 9, 30, 8, 0, 0), items[8].start_date);
+            Assert.AreEqual(new DateTime(2022, 10, 31, 8, 0, 0), items[9].start_date);
+            Assert.AreEqual(new DateTime(2022, 11, 30, 8, 0, 0), items[10].start_date);
+            Assert.AreEqual(new DateTime(2022, 12, 31, 8, 0, 0), items[11].start_date);
+        }
     }
 }

@@ -13,7 +13,10 @@ namespace DHTMLX.Scheduler.RecurringEvents
             public List<DateTime> Occurrences { get; set; }
         }
 
+        // https://docs.dhtmlx.com/scheduler/api__scheduler_occurrence_timestamp_in_utc_config.html
         public bool OccurrenceTimestampInUtc = false;
+
+        // https://docs.dhtmlx.com/scheduler/api__scheduler_recurring_overflow_instances_config.html
         public OverflowInstancesRule OverflowInstances = OverflowInstancesRule.Skip;
 
         /// <summary>
@@ -172,7 +175,7 @@ namespace DHTMLX.Scheduler.RecurringEvents
         }
         protected DateTime _GoToFirstMonthYearInstance(DateTime startDate, int increment, SchedulerEvent seriesInstance, int currentCount = 0)
         {
-            var overflowRule = OverflowInstancesRule.LastDay;
+            var overflowRule = this.OverflowInstances;
             if(currentCount == 0)
             {
                 currentCount = 1;
@@ -204,21 +207,25 @@ namespace DHTMLX.Scheduler.RecurringEvents
 
             var originalDate = resultDate;
 
-            if (typeInfo.WeekDayOfMonthInterval != -1 && typeInfo.WeekDayOfMonth != -1)
+            if (typeInfo.WeekDayOfMonth == -1 || typeInfo.WeekDayOfMonthInterval == -1)
+            {
+                resultDate = resultDate.AddDays(seriesInstance.start_date.Day - 1);
+            }
+            else
             {
                 resultDate = _GetNthWeekOfMonth(resultDate, typeInfo.WeekDayOfMonthInterval, (DayOfWeek)typeInfo.WeekDayOfMonth);
+            }
 
-                if(resultDate.Month != originalDate.Month && overflowRule != OverflowInstancesRule.Default)
+            if(resultDate.Month != originalDate.Month && overflowRule != OverflowInstancesRule.Default)
+            {
+                if(overflowRule == OverflowInstancesRule.LastDay)
                 {
-                    if(overflowRule == OverflowInstancesRule.LastDay)
-                    {
-                        resultDate = originalDate.AddMonths(1);
-                        resultDate = resultDate.AddDays(-1);
-                    }
-                    else
-                    {
-                        resultDate = _GoToFirstMonthYearInstance(originalDate.AddMonths(1), increment, seriesInstance, currentCount);
-                    }
+                    resultDate = originalDate.AddMonths(1);
+                    resultDate = resultDate.AddDays(-1);
+                }
+                else
+                {
+                   resultDate = _GoToFirstMonthYearInstance(originalDate, increment, seriesInstance, currentCount);
                 }
             }
 
