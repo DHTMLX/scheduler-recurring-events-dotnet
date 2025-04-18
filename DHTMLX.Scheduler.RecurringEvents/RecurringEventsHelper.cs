@@ -79,25 +79,34 @@ namespace DHTMLX.Scheduler.RecurringEvents
             return this.GetOccurrences(new List<SchedulerEvent> { item }, from, to, maxOccurrences);
         }
 
-        ///<summary>Gets the DateTime of the next specified week day following a specified date (i.e. get next Monday after December 1st, 2019).</summary>
-        ///<param name="date">The date.</param>
-        ///<param name="dayOfWeek">The day of week to return.</param>
-        ///<returns>The first dayOfWeek day following date, or date if it is on dayOfWeek.</returns>
-        protected DateTime _Next(DateTime date, DayOfWeek dayOfWeek)
-        {
-            return date.AddDays((dayOfWeek < date.DayOfWeek ? 7 : 0) + dayOfWeek - date.DayOfWeek);
-        }
-
         /// <summary>
-        /// Returns the DateTime of the specified week day that occurs on a specified week after a provided date (i.e. get second Tuesday of starting from December 1st, 2019)
+        /// Returns the <paramref name="nthWeek"/>‑th <paramref name="dayofWeek"/> that
+        /// occurs in the month that contains <paramref name="date"/>.
+        /// If that occurrence falls into the next month (e.g. '5‑th Monday' of a
+        /// 30‑day month), the DateTime for the following month is returned – the caller
+        /// can decide what to do with it.
         /// </summary>
-        /// <param name="date">Start date</param>
-        /// <param name="nthWeek">Week number</param>
-        /// <param name="dayOfWeek">Day of week to return</param>
-        /// <returns></returns>
-        private DateTime _GetNthWeekOfMonth(DateTime date, int nthWeek, DayOfWeek dayOfWeek)
+        public DateTime _GetNthWeekOfMonth(DateTime date, int nthWeek, DayOfWeek dayofWeek)
         {
-            return _Next(date, dayOfWeek).AddDays((nthWeek - 1) * 7);
+            if (nthWeek < 1)
+                throw new ArgumentOutOfRangeException(nameof(nthWeek), "nthWeek must be ≥ 1");
+
+            // Keep the incoming DateTime.Kind and time‑of‑day
+            var firstOfMonth = new DateTime(
+                date.Year, date.Month, 1,
+                date.Hour, date.Minute, date.Second, date.Millisecond,
+                date.Kind);
+
+            // how many days to step forward from the 1st to reach the first desired weekday?
+            int delta = ((int)dayofWeek - (int)firstOfMonth.DayOfWeek + 7) % 7;
+
+            // first occurrence in (this) month
+            var firstHit = firstOfMonth.AddDays(delta);
+
+            // N‑th occurrence
+            var result = firstHit.AddDays(7 * (nthWeek - 1));
+
+            return result;   // may be in the same month or spill into the next one
         }
         private List<SchedulerEvent> _ToEventList(SeriesInfo data)
         {
@@ -236,6 +245,7 @@ namespace DHTMLX.Scheduler.RecurringEvents
         protected SeriesInfo _GetOccurrences(SchedulerEvent ev, DateTime fromDate, DateTime toDate, int maxOccurrences)
         {
             var tmp = new SchedulerEvent(ev);
+            var overflowRule = this.OverflowInstances;
 
             var typeInfo = tmp._parsed_type;
             if (typeInfo.Type != RecurrenceType.RegularEvent && typeInfo.Type != RecurrenceType.DeletedInstance && tmp.event_length > 0)
@@ -260,7 +270,8 @@ namespace DHTMLX.Scheduler.RecurringEvents
 
                         var tmp_date = _GetNthWeekOfMonth(currDate, typeInfo.WeekDayOfMonthInterval, (DayOfWeek)typeInfo.WeekDayOfMonth);
                         occEndDate = tmp_date.AddSeconds((double)tmp.event_length);
-                        if (_IsInTimeFrame(tmp_date, occEndDate, fromDate, toDate) && tmp_date >= seriesStart)
+
+                        if (_IsInTimeFrame(tmp_date, occEndDate, fromDate, toDate) && tmp_date >= seriesStart && tmp_date.Month == currDate.Month)
                         {
                             occurrences.Add(tmp_date);
                         }

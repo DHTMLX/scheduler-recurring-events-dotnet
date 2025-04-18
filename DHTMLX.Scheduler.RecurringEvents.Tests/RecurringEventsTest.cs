@@ -709,5 +709,62 @@ namespace DHTMLX.Scheduler.RecurringEvents.Tests
             Assert.AreEqual(new DateTime(2022, 11, 30, 8, 0, 0), items[10].start_date);
             Assert.AreEqual(new DateTime(2022, 12, 31, 8, 0, 0), items[11].start_date);
         }
+
+        [TestMethod]
+        public void EverySecondThursday()
+        {
+            var evs = new List<SchedulerEvent>()
+            {
+                new SchedulerEvent(){
+                    id = "1",
+                    text = "Every Second Thursday",
+                    start_date = new DateTime(2024, 10, 24, 14, 0, 0),
+                    end_date = new DateTime(2025, 3, 1, 00,00,00),
+                    event_pid = null,
+                    event_length = 1800,
+                    rec_type = "month_1_4_2_#"
+                }
+            };
+            var helper = new RecurringEventsHelper
+            {
+                OverflowInstances = RecurringEventsHelper.OverflowInstancesRule.LastDay
+            };
+
+
+            var items = helper.GetOccurrences(evs, new DateTime(2024, 10, 1), new DateTime(2025, 3, 1));
+
+            Assert.AreEqual(
+                5,
+                items.Count());
+
+            Assert.AreEqual(items[0].start_date, new DateTime(2024, 10, 10, 14, 0, 0));
+            Assert.AreEqual(items[1].start_date, new DateTime(2024, 11, 14, 14, 0, 0));
+            Assert.AreEqual(items[2].start_date, new DateTime(2024, 12, 12, 14, 0, 0));
+            Assert.AreEqual(items[3].start_date, new DateTime(2025, 1, 9, 14, 0, 0));
+            Assert.AreEqual(items[4].start_date, new DateTime(2025, 2, 13, 14, 0, 0));
+        }
+
+        [TestMethod]
+        public void EveryThirdFridayExactDay()
+        {
+            var data = new List<SchedulerEvent>()
+            {
+                new SchedulerEvent(){
+                id="38"
+                ,text="Third friday"
+                ,start_date=new DateTime(2011, 10, 01, 11,50,00)
+                ,end_date=new DateTime(9999, 02, 01)
+                ,event_length=14100
+                ,rec_type="month_1_5_3_#no"
+                ,event_pid=null}
+            };
+
+            var helper = new RecurringEventsHelper();
+            var items = helper.GetOccurrences(data, new DateTime(2023, 06, 30, 13, 42, 01), new DateTime(2023, 06, 30, 13, 42, 06));
+            Assert.AreEqual(0, items.Count);
+
+        }
     }
+
+
 }
